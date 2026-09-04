@@ -59,6 +59,8 @@ void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
         commandCount++;
         lastCommandLatency = millis() - wakeDetectedAt;
         Serial.printf("ESP-SR: command detected, id=%d phrase=%d latency=%lu ms\n", commandId, phraseId, (unsigned long)lastCommandLatency);
+        // Start a fresh latency measurement for the next command.
+        wakeDetectedAt = millis();
         if (commandId == CMD_START_RECORDING) { recording = true; showState("RECORDING", "Command recognized"); }
         else if (commandId == CMD_STOP_RECORDING) { recording = false; showState("STOPPED", "Recording stopped"); }
         else if (commandId == CMD_SHOW_STATUS) {
