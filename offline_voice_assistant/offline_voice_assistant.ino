@@ -158,15 +158,16 @@ void setup() {
     if (WiFi.status() == WL_CONNECTED) {
         ArduinoOTA.setHostname("m5-offline-voice-assistant");
         ArduinoOTA.onStart([]() {
-            Serial.println("OTA: pausing ESP-SR for upload");
-            ESP_SR.pause();
+            Serial.println("OTA: stopping ESP-SR to free memory");
+            ESP_SR.end();
         });
         ArduinoOTA.onEnd([]() {
             Serial.println("OTA: upload complete; restarting");
         });
         ArduinoOTA.onError([](ota_error_t error) {
-            Serial.printf("OTA: error %u; ESP-SR will resume\n", (unsigned)error);
-            ESP_SR.resume();
+            Serial.printf("OTA: error %u; restarting device\n", (unsigned)error);
+            delay(100);
+            ESP.restart();
         });
         ArduinoOTA.begin();
         Serial.printf("OTA ready at %s\n", WiFi.localIP().toString().c_str());
@@ -202,7 +203,7 @@ void setup() {
         return;
     }
     Serial.println("ESP-SR: ready; say Hi ESP, then a command");
-    showState("READY", "OMy first wifi change");
+    showState("READY", "first wifi change");
 }
 
 void loop() {
