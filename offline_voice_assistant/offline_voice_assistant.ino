@@ -28,6 +28,7 @@ static const sr_cmd_t commands[] = {
 
 I2SClass i2s;
 bool recording = false;
+bool loopWatchdogRegistered = false;
 uint32_t commandCount = 0;
 uint32_t timeoutCount = 0;
 uint32_t wakeDetectedAt = 0;
@@ -38,12 +39,10 @@ QueueHandle_t speechQueue;
 
 void healthTask(void* parameter) {
     (void)parameter;
-    esp_task_wdt_add(nullptr);
     for (;;) {
         Serial.printf("Health: uptime=%lu s free_heap=%lu KB commands=%lu timeouts=%lu\n",
                       (unsigned long)(millis() / 1000), (unsigned long)(ESP.getFreeHeap() / 1024),
                       (unsigned long)commandCount, (unsigned long)timeoutCount);
-        esp_task_wdt_reset();
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
@@ -175,6 +174,10 @@ void setup() {
 
 void loop() {
     CoreS3.update();
-
+    if (!loopWatchdogRegistered) {
+        esp_err_t result = esp_task_wdt_add(nullptr);
+        loopWatchdogRegistered = (result == ESP_OK || result == ESP_ERR_INVALID_STATE);
+    }
+    esp_task_wdt_reset();
     delay(10);
 }
