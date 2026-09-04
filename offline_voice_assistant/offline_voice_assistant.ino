@@ -21,8 +21,8 @@
 #define MIC_MCLK 0
 
 #if ENABLE_NETWORK_FEATURES
-const char* WIFI_SSID = "YOUR_WIFI_NAME";
-const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+const char* WIFI_SSID = "404 Network Not Found";
+const char* WIFI_PASSWORD = "K@rthik2001";
 #endif
 
 enum CommandId { CMD_START_RECORDING, CMD_STOP_RECORDING, CMD_SHOW_STATUS, CMD_CLEAR_SCREEN };
@@ -157,6 +157,17 @@ void setup() {
     while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 10000) delay(100);
     if (WiFi.status() == WL_CONNECTED) {
         ArduinoOTA.setHostname("m5-offline-voice-assistant");
+        ArduinoOTA.onStart([]() {
+            Serial.println("OTA: pausing ESP-SR for upload");
+            ESP_SR.pause();
+        });
+        ArduinoOTA.onEnd([]() {
+            Serial.println("OTA: upload complete; restarting");
+        });
+        ArduinoOTA.onError([](ota_error_t error) {
+            Serial.printf("OTA: error %u; ESP-SR will resume\n", (unsigned)error);
+            ESP_SR.resume();
+        });
         ArduinoOTA.begin();
         Serial.printf("OTA ready at %s\n", WiFi.localIP().toString().c_str());
     } else {
@@ -191,7 +202,7 @@ void setup() {
         return;
     }
     Serial.println("ESP-SR: ready; say Hi ESP, then a command");
-    showState("READY", "Say the wake word, then a command");
+    showState("READY", "OMy first wifi change");
 }
 
 void loop() {
