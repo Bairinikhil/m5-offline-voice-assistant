@@ -4,7 +4,7 @@
 #include "esp_task_wdt.h"
 #include "ESP_I2S.h"
 #include "ESP_SR.h"
-#define ENABLE_NETWORK_FEATURES 0
+#define ENABLE_NETWORK_FEATURES 1
 #if ENABLE_NETWORK_FEATURES
 #include <WiFi.h>
 #include <ArduinoOTA.h>

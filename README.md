@@ -19,4 +19,4 @@ No Wi-Fi, API key, server, or cloud service is required.
 
 ## Optional OTA
 
-The assistant is offline by default. To enable wireless firmware updates, set `ENABLE_NETWORK_FEATURES` to `1`, enter your Wi-Fi details locally, and upload once by USB. OTA then uses Wi-Fi only for firmware updates; speech recognition remains on-device.
+OTA is enabled in the sketch. Enter your Wi-Fi details locally, upload once by USB, and future firmware updates can use Wi-Fi. OTA uses Wi-Fi only for firmware updates; speech recognition remains on-device. Never commit your credentials.
