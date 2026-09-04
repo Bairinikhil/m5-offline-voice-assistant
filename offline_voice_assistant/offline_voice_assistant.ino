@@ -23,6 +23,10 @@ static const sr_cmd_t commands[] = {
 
 I2SClass i2s;
 bool recording = false;
+uint32_t commandCount = 0;
+uint32_t timeoutCount = 0;
+uint32_t wakeDetectedAt = 0;
+uint32_t lastCommandLatency = 0;
 
 enum AssistantState {
     WAITING_FOR_WAKE_WORD,
@@ -47,19 +51,29 @@ void showState(const char* title, const char* detail) {
 void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
     (void)phraseId;
     if (event == SR_EVENT_WAKEWORD) {
+        wakeDetectedAt = millis();
         Serial.println("ESP-SR: wake word detected");
         showState("WAKE WORD", "Listening for command...");
         ESP_SR.setMode(SR_MODE_COMMAND);
     } else if (event == SR_EVENT_COMMAND) {
-        Serial.printf("ESP-SR: command detected, id=%d phrase=%d\n", commandId, phraseId);
+        commandCount++;
+        lastCommandLatency = millis() - wakeDetectedAt;
+        Serial.printf("ESP-SR: command detected, id=%d phrase=%d latency=%lu ms\n", commandId, phraseId, (unsigned long)lastCommandLatency);
         if (commandId == CMD_START_RECORDING) { recording = true; showState("RECORDING", "Command recognized"); }
         else if (commandId == CMD_STOP_RECORDING) { recording = false; showState("STOPPED", "Recording stopped"); }
-        else if (commandId == CMD_SHOW_STATUS) showState("STATUS", recording ? "Recording: ON" : "Recording: OFF");
+        else if (commandId == CMD_SHOW_STATUS) {
+            char status[160];
+            snprintf(status, sizeof(status), "Recording: %s\nCommands: %lu\nTimeouts: %lu\nLatency: %lu ms",
+                     recording ? "ON" : "OFF", (unsigned long)commandCount,
+                     (unsigned long)timeoutCount, (unsigned long)lastCommandLatency);
+            showState("STATUS", status);
+        }
         else if (commandId == CMD_CLEAR_SCREEN) showState("READY", "Waiting for wake word...");
         // Keep listening for another command until the command window times out.
         ESP_SR.setMode(SR_MODE_COMMAND);
     } else if (event == SR_EVENT_TIMEOUT) {
-        Serial.println("ESP-SR: command timeout");
+        timeoutCount++;
+        Serial.printf("ESP-SR: command timeout (total=%lu)\n", (unsigned long)timeoutCount);
         showState("READY", "Waiting for wake word...");
         ESP_SR.setMode(SR_MODE_WAKEWORD);
     }
