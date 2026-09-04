@@ -1,6 +1,7 @@
 #include <M5CoreS3.h>
 #include <Preferences.h>
 #include "esp_system.h"
+#include "esp_task_wdt.h"
 #include "ESP_I2S.h"
 #include "ESP_SR.h"
 #include "freertos/FreeRTOS.h"
@@ -37,10 +38,12 @@ QueueHandle_t speechQueue;
 
 void healthTask(void* parameter) {
     (void)parameter;
+    esp_task_wdt_add(nullptr);
     for (;;) {
         Serial.printf("Health: uptime=%lu s free_heap=%lu KB commands=%lu timeouts=%lu\n",
                       (unsigned long)(millis() / 1000), (unsigned long)(ESP.getFreeHeap() / 1024),
                       (unsigned long)commandCount, (unsigned long)timeoutCount);
+        esp_task_wdt_reset();
         vTaskDelay(pdMS_TO_TICKS(10000));
     }
 }
@@ -139,6 +142,13 @@ void setup() {
     commandCount = preferences.getUInt("commands", 0);
     timeoutCount = preferences.getUInt("timeouts", 0);
     Serial.printf("Device reset: %s\n", resetReasonName(esp_reset_reason()));
+    esp_task_wdt_config_t watchdogConfig = {
+        .timeout_ms = 30000,
+        .idle_core_mask = 0,
+        .trigger_panic = false
+    };
+    esp_err_t watchdogResult = esp_task_wdt_init(&watchdogConfig);
+    Serial.printf("Watchdog: %s\n", watchdogResult == ESP_OK ? "enabled" : "already enabled or unavailable");
     xTaskCreatePinnedToCore(healthTask, "health_task", 3072, nullptr, 1, nullptr, 0);
     showState("STARTING", "Loading offline speech model...");
     i2s.setTimeout(1000);
