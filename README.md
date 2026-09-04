@@ -16,3 +16,7 @@ Microphone -> ESP-SR WakeNet -> "Hi ESP" -> ESP-SR MultiNet -> Command -> Displa
 Say `Hi ESP`, then try `Start`, `Stop`, `Show status`, or `Clear screen`.
 
 No Wi-Fi, API key, server, or cloud service is required.
+
+## Optional OTA
+
+The assistant is offline by default. To enable wireless firmware updates, set `ENABLE_NETWORK_FEATURES` to `1`, enter your Wi-Fi details locally, and upload once by USB. OTA then uses Wi-Fi only for firmware updates; speech recognition remains on-device.

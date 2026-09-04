@@ -4,6 +4,11 @@
 #include "esp_task_wdt.h"
 #include "ESP_I2S.h"
 #include "ESP_SR.h"
+#define ENABLE_NETWORK_FEATURES 0
+#if ENABLE_NETWORK_FEATURES
+#include <WiFi.h>
+#include <ArduinoOTA.h>
+#endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 
@@ -14,6 +19,11 @@
 #define MIC_WS 33
 #define MIC_DATA 14
 #define MIC_MCLK 0
+
+#if ENABLE_NETWORK_FEATURES
+const char* WIFI_SSID = "YOUR_WIFI_NAME";
+const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+#endif
 
 enum CommandId { CMD_START_RECORDING, CMD_STOP_RECORDING, CMD_SHOW_STATUS, CMD_CLEAR_SCREEN };
 static const sr_cmd_t commands[] = {
@@ -141,6 +151,18 @@ void setup() {
     commandCount = preferences.getUInt("commands", 0);
     timeoutCount = preferences.getUInt("timeouts", 0);
     Serial.printf("Device reset: %s\n", resetReasonName(esp_reset_reason()));
+#if ENABLE_NETWORK_FEATURES
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+    uint32_t wifiStart = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - wifiStart < 10000) delay(100);
+    if (WiFi.status() == WL_CONNECTED) {
+        ArduinoOTA.setHostname("m5-offline-voice-assistant");
+        ArduinoOTA.begin();
+        Serial.printf("OTA ready at %s\n", WiFi.localIP().toString().c_str());
+    } else {
+        Serial.println("Wi-Fi unavailable; continuing offline");
+    }
+#endif
     esp_task_wdt_config_t watchdogConfig = {
         .timeout_ms = 30000,
         .idle_core_mask = 0,
@@ -174,6 +196,9 @@ void setup() {
 
 void loop() {
     CoreS3.update();
+#if ENABLE_NETWORK_FEATURES
+    if (WiFi.status() == WL_CONNECTED) ArduinoOTA.handle();
+#endif
     if (!loopWatchdogRegistered) {
         esp_err_t result = esp_task_wdt_add(nullptr);
         loopWatchdogRegistered = (result == ESP_OK || result == ESP_ERR_INVALID_STATE);
