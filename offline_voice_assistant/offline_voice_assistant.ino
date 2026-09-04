@@ -1,4 +1,6 @@
 #include <M5CoreS3.h>
+#include <Preferences.h>
+#include "esp_system.h"
 #include "ESP_I2S.h"
 #include "ESP_SR.h"
 
@@ -27,6 +29,7 @@ uint32_t commandCount = 0;
 uint32_t timeoutCount = 0;
 uint32_t wakeDetectedAt = 0;
 uint32_t lastCommandLatency = 0;
+Preferences preferences;
 
 enum AssistantState {
     WAITING_FOR_WAKE_WORD,
@@ -48,6 +51,19 @@ void showState(const char* title, const char* detail) {
     CoreS3.Display.println(detail);
 }
 
+const char* resetReasonName(esp_reset_reason_t reason) {
+    switch (reason) {
+        case ESP_RST_POWERON: return "power-on";
+        case ESP_RST_SW: return "software";
+        case ESP_RST_PANIC: return "panic";
+        case ESP_RST_INT_WDT: return "interrupt watchdog";
+        case ESP_RST_TASK_WDT: return "task watchdog";
+        case ESP_RST_WDT: return "watchdog";
+        case ESP_RST_BROWNOUT: return "brownout";
+        default: return "other";
+    }
+}
+
 void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
     (void)phraseId;
     if (event == SR_EVENT_WAKEWORD) {
@@ -57,6 +73,7 @@ void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
         ESP_SR.setMode(SR_MODE_COMMAND);
     } else if (event == SR_EVENT_COMMAND) {
         commandCount++;
+        preferences.putUInt("commands", commandCount);
         lastCommandLatency = millis() - wakeDetectedAt;
         Serial.printf("ESP-SR: command detected, id=%d phrase=%d latency=%lu ms\n", commandId, phraseId, (unsigned long)lastCommandLatency);
         // Start a fresh latency measurement for the next command.
@@ -75,6 +92,7 @@ void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
         ESP_SR.setMode(SR_MODE_COMMAND);
     } else if (event == SR_EVENT_TIMEOUT) {
         timeoutCount++;
+        preferences.putUInt("timeouts", timeoutCount);
         Serial.printf("ESP-SR: command timeout (total=%lu)\n", (unsigned long)timeoutCount);
         showState("READY", "Waiting for wake word...");
         ESP_SR.setMode(SR_MODE_WAKEWORD);
@@ -84,6 +102,10 @@ void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
 void setup() {
     Serial.begin(115200);
     CoreS3.begin();
+    preferences.begin("assistant", false);
+    commandCount = preferences.getUInt("commands", 0);
+    timeoutCount = preferences.getUInt("timeouts", 0);
+    Serial.printf("Device reset: %s\n", resetReasonName(esp_reset_reason()));
     showState("STARTING", "Loading offline speech model...");
     i2s.setTimeout(1000);
     // CoreS3's built-in microphone is connected to I2S1.
