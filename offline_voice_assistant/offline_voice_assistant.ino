@@ -32,6 +32,8 @@ uint32_t timeoutCount = 0;
 uint32_t wakeDetectedAt = 0;
 uint32_t lastCommandLatency = 0;
 Preferences preferences;
+struct SpeechEvent { sr_event_t event; int commandId; int phraseId; };
+QueueHandle_t speechQueue;
 
 void healthTask(void* parameter) {
     (void)parameter;
@@ -76,8 +78,10 @@ const char* resetReasonName(esp_reset_reason_t reason) {
     }
 }
 
-void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
-    (void)phraseId;
+void handleSpeechEvent(const SpeechEvent& speechEvent) {
+    sr_event_t event = speechEvent.event;
+    int commandId = speechEvent.commandId;
+    int phraseId = speechEvent.phraseId;
     if (event == SR_EVENT_WAKEWORD) {
         wakeDetectedAt = millis();
         Serial.println("ESP-SR: wake word detected");
@@ -111,9 +115,26 @@ void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
     }
 }
 
+void onSpeechEvent(sr_event_t event, int commandId, int phraseId) {
+    SpeechEvent speechEvent = {event, commandId, phraseId};
+    if (speechQueue != nullptr) xQueueSend(speechQueue, &speechEvent, 0);
+}
+
+void speechEventTask(void* parameter) {
+    (void)parameter;
+    SpeechEvent speechEvent;
+    for (;;) {
+        if (xQueueReceive(speechQueue, &speechEvent, portMAX_DELAY) == pdTRUE) {
+            handleSpeechEvent(speechEvent);
+        }
+    }
+}
+
 void setup() {
     Serial.begin(115200);
     CoreS3.begin();
+    speechQueue = xQueueCreate(8, sizeof(SpeechEvent));
+    xTaskCreatePinnedToCore(speechEventTask, "speech_events", 4096, nullptr, 2, nullptr, 0);
     preferences.begin("assistant", false);
     commandCount = preferences.getUInt("commands", 0);
     timeoutCount = preferences.getUInt("timeouts", 0);
