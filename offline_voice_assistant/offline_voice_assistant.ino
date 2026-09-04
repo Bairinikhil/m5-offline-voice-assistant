@@ -3,6 +3,8 @@
 #include "esp_system.h"
 #include "ESP_I2S.h"
 #include "ESP_SR.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
 // Offline Voice Assistant — M5CoreS3
 //
@@ -30,6 +32,16 @@ uint32_t timeoutCount = 0;
 uint32_t wakeDetectedAt = 0;
 uint32_t lastCommandLatency = 0;
 Preferences preferences;
+
+void healthTask(void* parameter) {
+    (void)parameter;
+    for (;;) {
+        Serial.printf("Health: uptime=%lu s free_heap=%lu KB commands=%lu timeouts=%lu\n",
+                      (unsigned long)(millis() / 1000), (unsigned long)(ESP.getFreeHeap() / 1024),
+                      (unsigned long)commandCount, (unsigned long)timeoutCount);
+        vTaskDelay(pdMS_TO_TICKS(10000));
+    }
+}
 
 enum AssistantState {
     WAITING_FOR_WAKE_WORD,
@@ -106,6 +118,7 @@ void setup() {
     commandCount = preferences.getUInt("commands", 0);
     timeoutCount = preferences.getUInt("timeouts", 0);
     Serial.printf("Device reset: %s\n", resetReasonName(esp_reset_reason()));
+    xTaskCreatePinnedToCore(healthTask, "health_task", 3072, nullptr, 1, nullptr, 0);
     showState("STARTING", "Loading offline speech model...");
     i2s.setTimeout(1000);
     // CoreS3's built-in microphone is connected to I2S1.
