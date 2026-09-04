@@ -91,13 +91,13 @@ void setup() {
     }
     i2s.setPins(MIC_BCLK, MIC_WS, -1, MIC_DATA, MIC_MCLK);
     if (!i2s.begin(I2S_MODE_STD, SAMPLE_RATE, I2S_DATA_BIT_WIDTH_16BIT,
-                   I2S_SLOT_MODE_MONO, I2S_STD_SLOT_RIGHT)) {
+                   I2S_SLOT_MODE_STEREO, I2S_STD_SLOT_BOTH)) {
         showState("MIC ERROR", "Could not start I2S microphone");
         return;
     }
     ESP_SR.onEvent(onSpeechEvent);
     if (!ESP_SR.begin(i2s, commands, sizeof(commands) / sizeof(sr_cmd_t),
-                      SR_CHANNELS_MONO, SR_MODE_WAKEWORD, "M")) {
+                      SR_CHANNELS_STEREO, SR_MODE_WAKEWORD, "NM")) {
         showState("MODEL ERROR", "ESP-SR could not start");
         return;
     }
