@@ -4,7 +4,7 @@
 #include "esp_task_wdt.h"
 #include "ESP_I2S.h"
 #include "ESP_SR.h"
-#define ENABLE_NETWORK_FEATURES 1
+#define ENABLE_NETWORK_FEATURES 0
 #if ENABLE_NETWORK_FEATURES
 #include <WiFi.h>
 #include <ArduinoOTA.h>
@@ -203,7 +203,7 @@ void setup() {
         return;
     }
     Serial.println("ESP-SR: ready; say Hi ESP, then a command");
-    showState("READY", "first wifi change");
+    showState("READY", "Say the wake word, then a command");
 }
 
 void loop() {
